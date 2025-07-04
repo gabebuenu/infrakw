@@ -27,6 +27,21 @@ export interface Equipment {
   updatedAt: string
 }
 
+export interface Store {
+  id: string
+  name: string
+  code: string
+  address: string
+  city: string
+  state: string
+  zipCode: string
+  phone?: string
+  manager?: string
+  status: 'ativo' | 'inativo'
+  createdAt?: string
+  updatedAt?: string
+}
+
 export interface Maintenance {
   id: string
   equipmentId: string

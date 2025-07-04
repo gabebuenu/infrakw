@@ -112,6 +112,172 @@
       <h3>Nenhum equipamento encontrado</h3>
       <p>Tente ajustar os filtros ou adicione um novo equipamento</p>
     </div>
+
+    <!-- Add Equipment Modal -->
+    <div v-if="showAddModal" class="modal-overlay" @click="closeModal">
+      <div class="modal" @click.stop>
+        <div class="modal-header">
+          <h2>{{ editingEquipment ? 'Editar Equipamento' : 'Novo Equipamento' }}</h2>
+          <button class="modal-close" @click="closeModal">
+            <font-awesome-icon :icon="['fas', 'times']" />
+          </button>
+        </div>
+        
+        <form @submit.prevent="saveEquipment" class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Nome do Equipamento *</label>
+              <input 
+                type="text" 
+                class="form-input"
+                v-model="equipmentForm.name"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Código Interno *</label>
+              <input 
+                type="text" 
+                class="form-input"
+                v-model="equipmentForm.internalCode"
+                required
+              />
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Tipo *</label>
+              <select class="form-select" v-model="equipmentForm.type" required>
+                <option value="">Selecione</option>
+                <option value="Computador">Computador</option>
+                <option value="Impressora">Impressora</option>
+                <option value="Roteador">Roteador</option>
+                <option value="Nobreak">Nobreak</option>
+                <option value="Monitor">Monitor</option>
+                <option value="Servidor">Servidor</option>
+                <option value="Switch">Switch</option>
+                <option value="Outro">Outro</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Loja *</label>
+              <select class="form-select" v-model="equipmentForm.store" required>
+                <option value="">Selecione</option>
+                <option value="Centro">Centro</option>
+                <option value="Shopping Norte">Shopping Norte</option>
+                <option value="Matriz">Matriz</option>
+                <option value="Filial Sul">Filial Sul</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Marca *</label>
+              <input 
+                type="text" 
+                class="form-input"
+                v-model="equipmentForm.brand"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Modelo *</label>
+              <input 
+                type="text" 
+                class="form-input"
+                v-model="equipmentForm.model"
+                required
+              />
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Número de Série</label>
+              <input 
+                type="text" 
+                class="form-input"
+                v-model="equipmentForm.serialNumber"
+              />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Patrimônio</label>
+              <input 
+                type="text" 
+                class="form-input"
+                v-model="equipmentForm.patrimonyNumber"
+              />
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Data de Compra</label>
+              <input 
+                type="date" 
+                class="form-input"
+                v-model="equipmentForm.purchaseDate"
+              />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Garantia até</label>
+              <input 
+                type="date" 
+                class="form-input"
+                v-model="equipmentForm.warrantyUntil"
+              />
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Valor de Compra</label>
+              <input 
+                type="number" 
+                step="0.01"
+                class="form-input"
+                v-model="equipmentForm.purchaseValue"
+                placeholder="0,00"
+              />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Status</label>
+              <select class="form-select" v-model="equipmentForm.status">
+                <option value="ativo">Ativo</option>
+                <option value="manutencao">Manutenção</option>
+                <option value="inativo">Inativo</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Observações</label>
+            <textarea 
+              class="form-input"
+              v-model="equipmentForm.notes"
+              rows="3"
+              placeholder="Informações adicionais sobre o equipamento..."
+            ></textarea>
+          </div>
+          
+          <div class="modal-actions">
+            <button type="button" class="btn btn-secondary" @click="closeModal">
+              Cancelar
+            </button>
+            <button type="submit" class="btn btn-primary" :disabled="isSaving">
+              <font-awesome-icon 
+                v-if="isSaving"
+                :icon="['fas', 'spinner']" 
+                class="fa-spin"
+              />
+              {{ isSaving ? 'Salvando...' : (editingEquipment ? 'Atualizar' : 'Cadastrar') }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -122,13 +288,31 @@ import { useEquipments } from '../composables/useEquipments'
 import type { Equipment } from '../types'
 
 const { canManageEquipments } = useAuth()
-const { equipments, isLoading, loadEquipments } = useEquipments()
+const { equipments, isLoading, loadEquipments, addEquipment, updateEquipment } = useEquipments()
 
 const showAddModal = ref(false)
+const editingEquipment = ref<Equipment | null>(null)
+const isSaving = ref(false)
 const searchQuery = ref('')
 const selectedStore = ref('')
 const selectedType = ref('')
 const selectedStatus = ref('')
+
+const equipmentForm = ref({
+  name: '',
+  internalCode: '',
+  type: '',
+  store: '',
+  brand: '',
+  model: '',
+  serialNumber: '',
+  patrimonyNumber: '',
+  purchaseDate: '',
+  warrantyUntil: '',
+  purchaseValue: 0,
+  status: 'ativo' as 'ativo' | 'manutencao' | 'inativo',
+  notes: ''
+})
 
 const filteredEquipments = computed(() => {
   let filtered = equipments.value
@@ -138,7 +322,7 @@ const filteredEquipments = computed(() => {
     filtered = filtered.filter(equipment => 
       equipment.name.toLowerCase().includes(query) ||
       equipment.internalCode.toLowerCase().includes(query) ||
-      equipment.serialNumber.toLowerCase().includes(query)
+      equipment.serialNumber?.toLowerCase().includes(query)
     )
   }
 
@@ -178,19 +362,80 @@ const isWarrantyExpiring = (warrantyDate: string) => {
   return diffDays <= 30 && diffDays >= 0
 }
 
+const resetForm = () => {
+  equipmentForm.value = {
+    name: '',
+    internalCode: '',
+    type: '',
+    store: '',
+    brand: '',
+    model: '',
+    serialNumber: '',
+    patrimonyNumber: '',
+    purchaseDate: '',
+    warrantyUntil: '',
+    purchaseValue: 0,
+    status: 'ativo',
+    notes: ''
+  }
+}
+
+const closeModal = () => {
+  showAddModal.value = false
+  editingEquipment.value = null
+  resetForm()
+}
+
 const viewEquipment = (equipment: Equipment) => {
   console.log('View equipment:', equipment)
   // Implement view modal
 }
 
 const editEquipment = (equipment: Equipment) => {
-  console.log('Edit equipment:', equipment)
-  // Implement edit modal
+  editingEquipment.value = equipment
+  equipmentForm.value = {
+    name: equipment.name,
+    internalCode: equipment.internalCode,
+    type: equipment.type,
+    store: equipment.store,
+    brand: equipment.brand,
+    model: equipment.model,
+    serialNumber: equipment.serialNumber || '',
+    patrimonyNumber: equipment.patrimonyNumber || '',
+    purchaseDate: equipment.purchaseDate || '',
+    warrantyUntil: equipment.warrantyUntil || '',
+    purchaseValue: equipment.purchaseValue || 0,
+    status: equipment.status,
+    notes: equipment.notes || ''
+  }
+  showAddModal.value = true
 }
 
 const newMaintenance = (equipment: Equipment) => {
   console.log('New maintenance for:', equipment)
   // Implement new maintenance modal
+}
+
+const saveEquipment = async () => {
+  isSaving.value = true
+  try {
+    const equipmentData = {
+      ...equipmentForm.value,
+      purchaseValue: Number(equipmentForm.value.purchaseValue)
+    }
+
+    if (editingEquipment.value) {
+      await updateEquipment(editingEquipment.value.id, equipmentData)
+    } else {
+      await addEquipment(equipmentData)
+    }
+    
+    closeModal()
+  } catch (error) {
+    console.error('Error saving equipment:', error)
+  } finally {
+    isSaving.value = false
+  }
 }
 
 onMounted(() => {
@@ -326,6 +571,100 @@ onMounted(() => {
   margin-bottom: var(--spacing-4);
 }
 
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background-color: white;
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-xl);
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-6);
+  border-bottom: 1px solid var(--neutral-200);
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: var(--neutral-900);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: var(--font-size-lg);
+  color: var(--neutral-500);
+  cursor: pointer;
+  padding: var(--spacing-2);
+}
+
+.modal-body {
+  padding: var(--spacing-6);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--spacing-4);
+}
+
+.form-group {
+  margin-bottom: var(--spacing-4);
+}
+
+.form-label {
+  display: block;
+  margin-bottom: var(--spacing-2);
+  font-weight: var(--font-weight-medium);
+  color: var(--neutral-700);
+}
+
+.form-input,
+.form-select {
+  width: 100%;
+  padding: var(--spacing-3);
+  border: 1px solid var(--neutral-300);
+  border-radius: var(--border-radius-md);
+  font-size: var(--font-size-sm);
+}
+
+.form-input:focus,
+.form-select:focus {
+  outline: none;
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px var(--primary-100);
+}
+
+textarea.form-input {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: var(--spacing-3);
+  justify-content: flex-end;
+  margin-top: var(--spacing-6);
+}
+
 @media (max-width: 1024px) {
   .filter-group {
     grid-template-columns: 1fr 1fr;
@@ -356,6 +695,14 @@ onMounted(() => {
   }
   
   .equipment-actions {
+    flex-direction: column;
+  }
+  
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .modal-actions {
     flex-direction: column;
   }
 }

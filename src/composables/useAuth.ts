@@ -1,114 +1,100 @@
 import { ref, computed } from 'vue'
-import { 
-  signInWithEmailAndPassword, 
-  signInWithPopup,
-  GoogleAuthProvider,
-  signOut, 
-  onAuthStateChanged,
-  User as FirebaseUser
-} from 'firebase/auth'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
-import { auth, db } from '../firebase/config'
 import type { User } from '../types'
 
+// USUÁRIOS MOCADOS PARA DESENVOLVIMENTO
+const mockUsers = {
+  'admin@teste.com': {
+    uid: 'mock-admin-123',
+    email: 'admin@teste.com',
+    name: 'Admin Teste',
+    role: 'admin' as const,
+    password: '123456',
+    photoURL: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150',
+    createdAt: new Date().toISOString(),
+    lastLogin: new Date().toISOString()
+  },
+  'tecnico@teste.com': {
+    uid: 'mock-tecnico-456',
+    email: 'tecnico@teste.com',
+    name: 'Técnico Teste',
+    role: 'tecnico' as const,
+    password: '123456',
+    photoURL: 'https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?auto=compress&cs=tinysrgb&w=150',
+    createdAt: new Date().toISOString(),
+    lastLogin: new Date().toISOString()
+  },
+  'diretor@teste.com': {
+    uid: 'mock-diretor-789',
+    email: 'diretor@teste.com',
+    name: 'Diretor Teste',
+    role: 'diretor' as const,
+    password: '123456',
+    photoURL: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=150',
+    createdAt: new Date().toISOString(),
+    lastLogin: new Date().toISOString()
+  },
+  'visualizador@teste.com': {
+    uid: 'mock-visualizador-101',
+    email: 'visualizador@teste.com',
+    name: 'Visualizador Teste',
+    role: 'visualizador' as const,
+    password: '123456',
+    photoURL: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150',
+    createdAt: new Date().toISOString(),
+    lastLogin: new Date().toISOString()
+  }
+}
+
 const currentUser = ref<User | null>(null)
-const isLoading = ref(true)
+const isLoading = ref(false)
 
 export function useAuth() {
   const login = async (email: string, password: string): Promise<boolean> => {
+    isLoading.value = true
+    
     try {
-      const result = await signInWithEmailAndPassword(auth, email, password)
-      const userDoc = await getDoc(doc(db, 'usuarios', result.user.uid))
-      
-      if (userDoc.exists()) {
-        const userData = userDoc.data()
-        currentUser.value = {
-          uid: result.user.uid,
-          email: result.user.email!,
-          name: userData.name,
-          role: userData.role,
-          photoURL: userData.photoURL,
-          createdAt: userData.createdAt,
-          lastLogin: userData.lastLogin
-        } as User
+      // Verificar se é um usuário mocado
+      const mockUser = mockUsers[email as keyof typeof mockUsers]
+      if (mockUser && mockUser.password === password) {
+        // Login com usuário mocado
+        const { password: _, ...userWithoutPassword } = mockUser
+        currentUser.value = userWithoutPassword as User
         
-        // Update last login
-        await setDoc(doc(db, 'usuarios', result.user.uid), {
-          ...userData,
-          lastLogin: new Date().toISOString()
-        }, { merge: true })
+        // Simular delay de rede
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        
+        return true
       }
       
-      return true
+      // Se não for usuário mocado, retornar erro
+      return false
+      
     } catch (error) {
       console.error('Error logging in:', error)
       return false
+    } finally {
+      isLoading.value = false
     }
   }
 
   const loginWithGoogle = async (): Promise<{ success: boolean; user?: User; error?: string }> => {
     try {
-      const provider = new GoogleAuthProvider()
-      provider.addScope('email')
-      provider.addScope('profile')
+      // Para desenvolvimento, simular login com Google usando usuário admin
+      await new Promise(resolve => setTimeout(resolve, 1500))
       
-      const result = await signInWithPopup(auth, provider)
-      const user = result.user
-      
-      // Check if user exists in Firestore
-      const userDoc = await getDoc(doc(db, 'usuarios', user.uid))
-      
-      if (userDoc.exists()) {
-        // User exists, load their data and update last login
-        const userData = userDoc.data()
-        const updatedUser = {
-          uid: user.uid,
-          email: user.email!,
-          name: userData.name,
-          role: userData.role,
-          photoURL: user.photoURL || userData.photoURL,
-          createdAt: userData.createdAt,
-          lastLogin: new Date().toISOString()
-        } as User
-        
-        await setDoc(doc(db, 'usuarios', user.uid), updatedUser, { merge: true })
-        currentUser.value = updatedUser
-      } else {
-        // New user, create profile with default role
-        const newUser: User = {
-          uid: user.uid,
-          email: user.email!,
-          name: user.displayName || user.email!.split('@')[0],
-          role: 'visualizador',
-          photoURL: user.photoURL || undefined,
-          createdAt: new Date().toISOString(),
-          lastLogin: new Date().toISOString()
-        }
-        
-        await setDoc(doc(db, 'usuarios', user.uid), newUser)
-        currentUser.value = newUser
-      }
+      const mockUser = mockUsers['admin@teste.com']
+      const { password: _, ...userWithoutPassword } = mockUser
+      currentUser.value = userWithoutPassword as User
       
       return { success: true, user: currentUser.value }
     } catch (error: any) {
       console.error('Error with Google login:', error)
-      
-      let errorMessage = 'Erro ao fazer login com Google'
-      if (error.code === 'auth/popup-closed-by-user') {
-        errorMessage = 'Login cancelado pelo usuário'
-      } else if (error.code === 'auth/popup-blocked') {
-        errorMessage = 'Pop-up bloqueado pelo navegador'
-      } else if (error.code === 'auth/cancelled-popup-request') {
-        errorMessage = 'Solicitação de pop-up cancelada'
-      }
-      
-      return { success: false, error: errorMessage }
+      return { success: false, error: 'Erro ao fazer login com Google' }
     }
   }
 
   const logout = async (): Promise<void> => {
     try {
-      await signOut(auth)
       currentUser.value = null
     } catch (error) {
       console.error('Error logging out:', error)
@@ -131,28 +117,6 @@ export function useAuth() {
   const canManageUsers = computed(() => 
     hasPermission(['admin'])
   )
-
-  // Initialize auth state
-  onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-    if (firebaseUser) {
-      const userDoc = await getDoc(doc(db, 'usuarios', firebaseUser.uid))
-      if (userDoc.exists()) {
-        const userData = userDoc.data()
-        currentUser.value = {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email!,
-          name: userData.name,
-          role: userData.role,
-          photoURL: userData.photoURL,
-          createdAt: userData.createdAt,
-          lastLogin: userData.lastLogin
-        } as User
-      }
-    } else {
-      currentUser.value = null
-    }
-    isLoading.value = false
-  })
 
   return {
     currentUser,
