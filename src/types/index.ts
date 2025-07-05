@@ -68,4 +68,7 @@ export interface DashboardStats {
   warrantyExpiringSoon: number
   noMaintenanceCount: number
   monthlyMaintenanceCost: number
+  totalUsers: number
+  totalStores: number
+  totalCompanies: number
 }

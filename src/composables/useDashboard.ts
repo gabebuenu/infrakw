@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { 
   collection, 
   getDocs, 
@@ -8,7 +8,7 @@ import {
   limit
 } from 'firebase/firestore'
 import { db } from '../firebase/config'
-import type { DashboardStats, Equipment, Maintenance, Store, Company } from '../types'
+import type { DashboardStats, Equipment, Maintenance, Store } from '../types'
 
 export function useDashboard() {
   const stats = ref<DashboardStats>({
@@ -18,6 +18,7 @@ export function useDashboard() {
     warrantyExpiringSoon: 0,
     noMaintenanceCount: 0,
     monthlyMaintenanceCost: 0,
+    totalUsers: 0,
     totalStores: 0,
     totalCompanies: 0
   })
@@ -68,7 +69,7 @@ export function useDashboard() {
       // Count equipments by store
       const equipmentsByStore: { [key: string]: number } = {}
       equipments.forEach(equipment => {
-        const store = stores.find(s => s.id === equipment.storeId)
+        const store = stores.find(s => s.id === equipment.store)
         const storeName = store?.name || 'Loja não encontrada'
         equipmentsByStore[storeName] = (equipmentsByStore[storeName] || 0) + 1
       })

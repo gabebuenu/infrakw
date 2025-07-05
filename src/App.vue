@@ -1,54 +1,90 @@
 <template>
   <div id="app">
+    <!-- Loading Screen Elegante -->
     <div v-if="isLoading" class="loading-screen">
-      <div class="loading-spinner">
-        <font-awesome-icon :icon="['fas', 'cogs']" class="fa-spin" />
+      <div class="loading-container">
+        <div class="loading-logo">
+          <font-awesome-icon :icon="['fas', 'cogs']" class="loading-icon" />
+        </div>
+        <div class="loading-text">
+          <h2>InfraKW</h2>
+          <p>Carregando sistema...</p>
+        </div>
+        <div class="loading-bar">
+          <div class="loading-progress"></div>
+        </div>
       </div>
-      <p>Carregando InfraKW...</p>
     </div>
     
+    <!-- Tela de Login Moderna -->
     <div v-else-if="!currentUser" class="login-layout">
+      <div class="login-background">
+        <div class="login-shapes">
+          <div class="shape shape-1"></div>
+          <div class="shape shape-2"></div>
+          <div class="shape shape-3"></div>
+        </div>
+      </div>
+      
       <div class="login-container">
         <div class="login-card">
           <div class="login-header">
             <div class="logo">
-              <font-awesome-icon :icon="['fas', 'cogs']" class="logo-icon" />
-              <span class="logo-text">InfraKW</span>
+              <div class="logo-icon">
+                <font-awesome-icon :icon="['fas', 'cogs']" />
+              </div>
+              <div class="logo-text">
+                <h1>InfraKW</h1>
+                <p>Sistema de Gestão de Equipamentos</p>
+              </div>
             </div>
-            <h1>Login</h1>
-            <p>Faça login para acessar o sistema de gestão de equipamentos</p>
           </div>
           
           <form @submit.prevent="handleLogin" class="login-form">
             <div class="form-group">
               <label for="email" class="form-label">Email</label>
-              <input 
-                id="email"
-                v-model="loginForm.email"
-                type="email" 
-                class="form-input"
-                placeholder="seu@email.com"
-                required
-              />
+              <div class="input-wrapper">
+                <font-awesome-icon :icon="['fas', 'envelope']" class="input-icon" />
+                <input 
+                  id="email"
+                  v-model="loginForm.email"
+                  type="email" 
+                  class="form-input"
+                  placeholder="seu@email.com"
+                  required
+                />
+              </div>
             </div>
             
             <div class="form-group">
               <label for="password" class="form-label">Senha</label>
-              <input 
-                id="password"
-                v-model="loginForm.password"
-                type="password" 
-                class="form-input"
-                placeholder="Sua senha"
-                required
-              />
+              <div class="input-wrapper">
+                <font-awesome-icon :icon="['fas', 'lock']" class="input-icon" />
+                <input 
+                  id="password"
+                  v-model="loginForm.password"
+                  :type="showPassword ? 'text' : 'password'"
+                  class="form-input"
+                  placeholder="Sua senha"
+                  required
+                />
+                <button 
+                  type="button" 
+                  class="password-toggle"
+                  @click="showPassword = !showPassword"
+                >
+                  <font-awesome-icon :icon="showPassword ? ['fas', 'eye-slash'] : ['fas', 'eye']" />
+                </button>
+              </div>
             </div>
             
-            <div class="form-group">
+            <div class="form-options">
               <label class="checkbox-label">
                 <input type="checkbox" v-model="rememberMe" />
+                <span class="checkmark"></span>
                 <span>Lembrar de mim</span>
               </label>
+              <a href="#" class="forgot-password">Esqueceu a senha?</a>
             </div>
             
             <button 
@@ -59,18 +95,18 @@
               <font-awesome-icon 
                 v-if="isLoginLoading"
                 :icon="['fas', 'spinner']" 
-                class="fa-spin"
+                class="loading-icon"
               />
               {{ isLoginLoading ? 'Entrando...' : 'Entrar' }}
             </button>
             
             <div class="divider">
-              <span>ou</span>
+              <span>ou continue com</span>
             </div>
             
             <button 
               type="button"
-              class="btn btn-google btn-lg"
+              class="btn btn-secondary btn-lg google-btn"
               @click="handleGoogleLogin"
               :disabled="isGoogleLoading"
             >
@@ -80,41 +116,46 @@
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
-              {{ isGoogleLoading ? 'Conectando...' : 'Continuar com Google' }}
+              {{ isGoogleLoading ? 'Conectando...' : 'Google' }}
             </button>
             
-            <div v-if="error" class="error-message">
+            <div v-if="error" class="alert alert-error">
+              <font-awesome-icon :icon="['fas', 'exclamation-circle']" />
               {{ error }}
             </div>
             
-            <div v-if="successMessage" class="success-message">
+            <div v-if="successMessage" class="alert alert-success">
+              <font-awesome-icon :icon="['fas', 'check-circle']" />
               {{ successMessage }}
             </div>
           </form>
           
-          <div class="demo-credentials">
-            <h3>Credenciais de Teste:</h3>
-            <div class="credential-item">
-              <strong>Admin:</strong> admin@teste.com / 123456
+          <div class="demo-section">
+            <h4>Credenciais de Demonstração</h4>
+            <div class="demo-grid">
+              <div class="demo-item" @click="fillCredentials('admin@teste.com', '123456')">
+                <strong>Admin</strong>
+                <span>admin@teste.com</span>
+              </div>
+              <div class="demo-item" @click="fillCredentials('tecnico@teste.com', '123456')">
+                <strong>Técnico</strong>
+                <span>tecnico@teste.com</span>
+              </div>
+              <div class="demo-item" @click="fillCredentials('diretor@teste.com', '123456')">
+                <strong>Diretor</strong>
+                <span>diretor@teste.com</span>
+              </div>
+              <div class="demo-item" @click="fillCredentials('visualizador@teste.com', '123456')">
+                <strong>Visualizador</strong>
+                <span>visualizador@teste.com</span>
+              </div>
             </div>
-            <div class="credential-item">
-              <strong>Técnico:</strong> tecnico@teste.com / 123456
-            </div>
-            <div class="credential-item">
-              <strong>Diretor:</strong> diretor@teste.com / 123456
-            </div>
-            <div class="credential-item">
-              <strong>Visualizador:</strong> visualizador@teste.com / 123456
-            </div>
-          </div>
-          
-          <div class="login-footer">
-            <p>© 2024 InfraKW. Sistema de Gestão de Equipamentos de TI</p>
           </div>
         </div>
       </div>
     </div>
     
+    <!-- Layout Principal -->
     <div v-else class="main-layout">
       <Sidebar />
       <div class="content-wrapper">
@@ -132,8 +173,7 @@ import { ref, provide, onMounted } from 'vue'
 import { useAuth } from './composables/useAuth'
 import Sidebar from './components/Sidebar.vue'
 import TopBar from './components/TopBar.vue'
-
-const { currentUser, isLoading, login, loginWithGoogle } = useAuth()
+import "/src/style.css"
 
 const loginForm = ref({
   email: '',
@@ -141,10 +181,13 @@ const loginForm = ref({
 })
 
 const rememberMe = ref(false)
+const showPassword = ref(false)
 const isLoginLoading = ref(false)
 const isGoogleLoading = ref(false)
 const error = ref('')
 const successMessage = ref('')
+
+const { currentUser, isLoading, login, loginWithGoogle } = useAuth()
 
 const handleLogin = async () => {
   error.value = ''
@@ -156,7 +199,6 @@ const handleLogin = async () => {
     
     if (success) {
       successMessage.value = 'Login realizado com sucesso!'
-      // O currentUser será atualizado automaticamente
     } else {
       error.value = 'Email ou senha incorretos'
     }
@@ -189,139 +231,404 @@ const handleGoogleLogin = async () => {
   }
 }
 
+const fillCredentials = (email: string, password: string) => {
+  loginForm.value.email = email
+  loginForm.value.password = password
+}
+
 const handleSearch = (query: string) => {
   console.log('Search query:', query)
-  // Implement global search functionality
 }
 
 const toggleMobileMenu = () => {
   console.log('Toggle mobile menu')
-  // Implement mobile menu toggle
 }
 
-// Provide auth context to all components
 provide('auth', { currentUser, isLoading })
 
 onMounted(() => {
-  // Initialize loading state
   setTimeout(() => {
     // Simulate loading completion
   }, 1000)
 })
 </script>
 
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
-:root {
-  --primary-50: #eff6ff;
-  --primary-100: #dbeafe;
-  --primary-500: #3b82f6;
-  --primary-600: #2563eb;
-  --primary-700: #1d4ed8;
-  
-  --neutral-50: #f9fafb;
-  --neutral-100: #f3f4f6;
-  --neutral-200: #e5e7eb;
-  --neutral-300: #d1d5db;
-  --neutral-400: #9ca3af;
-  --neutral-500: #6b7280;
-  --neutral-600: #4b5563;
-  --neutral-700: #374151;
-  --neutral-800: #1f2937;
-  --neutral-900: #111827;
-  
-  --success-50: #f0fdf4;
-  --success-100: #dcfce7;
-  --success-200: #bbf7d0;
-  --success-600: #16a34a;
-  --success-700: #15803d;
-  
-  --warning-50: #fffbeb;
-  --warning-100: #fef3c7;
-  --warning-600: #d97706;
-  --warning-700: #b45309;
-  
-  --error-50: #fef2f2;
-  --error-100: #fee2e2;
-  --error-200: #fecaca;
-  --error-600: #dc2626;
-  --error-700: #b91c1c;
-  
-  --spacing-1: 0.25rem;
-  --spacing-2: 0.5rem;
-  --spacing-3: 0.75rem;
-  --spacing-4: 1rem;
-  --spacing-5: 1.25rem;
-  --spacing-6: 1.5rem;
-  --spacing-8: 2rem;
-  --spacing-12: 3rem;
-  
-  --border-radius-sm: 0.125rem;
-  --border-radius-base: 0.25rem;
-  --border-radius-md: 0.375rem;
-  --border-radius-lg: 0.5rem;
-  --border-radius-xl: 0.75rem;
-  
-  --shadow-base: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-  
-  --font-size-xs: 0.75rem;
-  --font-size-sm: 0.875rem;
-  --font-size-base: 1rem;
-  --font-size-lg: 1.125rem;
-  --font-size-xl: 1.25rem;
-  --font-size-2xl: 1.5rem;
-  --font-size-3xl: 1.875rem;
-  --font-size-4xl: 2.25rem;
-  
-  --font-weight-normal: 400;
-  --font-weight-medium: 500;
-  --font-weight-semibold: 600;
-  --font-weight-bold: 700;
-  
-  --transition-fast: 150ms ease-in-out;
-}
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  line-height: 1.5;
-  color: var(--neutral-900);
-  background-color: var(--neutral-50);
-}
-
-#app {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
+<style scoped>
+/* Loading Screen */
 .loading-screen {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(135deg, var(--color-gray-900) 0%, var(--color-black) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.loading-container {
+  text-align: center;
+  color: var(--color-white);
+}
+
+.loading-logo {
+  margin-bottom: var(--space-6);
+}
+
+.loading-icon {
+  font-size: 4rem;
+  animation: spin 2s linear infinite;
+}
+
+.loading-text h2 {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--space-2);
+}
+
+.loading-text p {
+  color: var(--color-gray-400);
+  margin-bottom: var(--space-8);
+}
+
+.loading-bar {
+  width: 200px;
+  height: 4px;
+  background: var(--color-gray-800);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin: 0 auto;
+}
+
+.loading-progress {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-white), var(--color-gray-300));
+  border-radius: var(--radius-full);
+  animation: loading 2s ease-in-out infinite;
+}
+
+@keyframes loading {
+  0% { width: 0%; }
+  50% { width: 70%; }
+  100% { width: 100%; }
+}
+
+/* Login Layout */
+.login-layout {
+  min-height: 100vh;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+}
+
+.login-background {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--color-gray-50) 0%, var(--color-white) 100%);
+  overflow: hidden;
+}
+
+.login-shapes {
+  position: absolute;
+  inset: 0;
+}
+
+.shape {
+  position: absolute;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.02));
+  animation: float 6s ease-in-out infinite;
+}
+
+.shape-1 {
+  width: 300px;
+  height: 300px;
+  top: 10%;
+  left: 10%;
+  animation-delay: 0s;
+}
+
+.shape-2 {
+  width: 200px;
+  height: 200px;
+  top: 60%;
+  right: 10%;
+  animation-delay: 2s;
+}
+
+.shape-3 {
+  width: 150px;
+  height: 150px;
+  bottom: 20%;
+  left: 20%;
+  animation-delay: 4s;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-20px) rotate(5deg); }
+}
+
+.login-container {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 450px;
+}
+
+.login-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: var(--backdrop-blur);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-3xl);
+  padding: var(--space-10);
+  box-shadow: var(--shadow-2xl);
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: var(--space-10);
+}
+
+.logo {
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: var(--space-4);
+}
+
+.logo-icon {
+  width: 80px;
+  height: 80px;
+  background: var(--color-black);
+  border-radius: var(--radius-2xl);
+  display: flex;
+  align-items: center;
   justify-content: center;
-  min-height: 100vh;
-  background: linear-gradient(135deg, var(--primary-50) 0%, var(--primary-100) 100%);
+  font-size: var(--font-size-3xl);
+  color: var(--color-white);
+  box-shadow: var(--shadow-lg);
 }
 
-.loading-spinner {
-  font-size: var(--font-size-4xl);
-  color: var(--primary-600);
-  margin-bottom: var(--spacing-4);
+.logo-text h1 {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-black);
+  margin-bottom: var(--space-1);
 }
 
-.login-layout {
-  min-height: 100vh;
+.logo-text p {
+  color: var(--color-gray-600);
+  font-size: var(--font-size-sm);
 }
 
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.input-wrapper {
+  position: relative;
+}
+
+.input-icon {
+  position: absolute;
+  left: var(--space-4);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-gray-400);
+  z-index: 1;
+}
+
+.input-wrapper .form-input {
+  padding-left: var(--space-12);
+  padding-right: var(--space-12);
+}
+
+.password-toggle {
+  position: absolute;
+  right: var(--space-4);
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--color-gray-400);
+  cursor: pointer;
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.password-toggle:hover {
+  color: var(--color-gray-600);
+  background: var(--color-gray-100);
+}
+
+.form-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-600);
+}
+
+.checkbox-label input[type="checkbox"] {
+  display: none;
+}
+
+.checkmark {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--color-gray-300);
+  border-radius: var(--radius-sm);
+  position: relative;
+  transition: all var(--transition-fast);
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkmark {
+  background: var(--color-black);
+  border-color: var(--color-black);
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkmark::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--color-white);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+}
+
+.forgot-password {
+  color: var(--color-gray-600);
+  text-decoration: none;
+  font-size: var(--font-size-sm);
+  transition: color var(--transition-fast);
+}
+
+.forgot-password:hover {
+  color: var(--color-black);
+}
+
+.login-btn {
+  width: 100%;
+  margin-top: var(--space-4);
+}
+
+.divider {
+  position: relative;
+  text-align: center;
+  margin: var(--space-6) 0;
+}
+
+.divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--color-gray-200);
+}
+
+.divider span {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 0 var(--space-4);
+  color: var(--color-gray-500);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.google-btn {
+  width: 100%;
+  gap: var(--space-3);
+}
+
+.google-icon {
+  flex-shrink: 0;
+}
+
+.alert {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.alert-error {
+  background: var(--color-error-light);
+  color: var(--color-error);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.alert-success {
+  background: var(--color-success-light);
+  color: var(--color-success);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.demo-section {
+  margin-top: var(--space-8);
+  padding-top: var(--space-8);
+  border-top: 1px solid var(--color-gray-200);
+}
+
+.demo-section h4 {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-gray-700);
+  margin-bottom: var(--space-4);
+  text-align: center;
+}
+
+.demo-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+}
+
+.demo-item {
+  padding: var(--space-3);
+  background: var(--color-gray-50);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+}
+
+.demo-item:hover {
+  background: var(--color-gray-100);
+  transform: translateY(-1px);
+}
+
+.demo-item strong {
+  display: block;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-gray-900);
+  margin-bottom: var(--space-1);
+}
+
+.demo-item span {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-600);
+}
+
+/* Main Layout */
 .main-layout {
   display: flex;
   min-height: 100vh;
@@ -337,245 +644,9 @@ body {
 
 .main-content {
   flex: 1;
-  background-color: var(--neutral-50);
-  min-height: calc(100vh - 70px);
-}
-
-/* Login Styles */
-.login-container {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, var(--primary-50) 0%, var(--primary-100) 100%);
-  padding: var(--spacing-4);
-}
-
-.login-card {
-  background-color: white;
-  border-radius: var(--border-radius-xl);
-  box-shadow: var(--shadow-xl);
-  padding: var(--spacing-8);
-  width: 100%;
-  max-width: 400px;
-}
-
-.login-header {
-  text-align: center;
-  margin-bottom: var(--spacing-8);
-}
-
-.logo {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-3);
-  margin-bottom: var(--spacing-4);
-}
-
-.logo-icon {
-  font-size: var(--font-size-4xl);
-  color: var(--primary-600);
-}
-
-.logo-text {
-  font-size: var(--font-size-3xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--neutral-900);
-}
-
-.login-header h1 {
-  margin: 0 0 var(--spacing-2) 0;
-  color: var(--neutral-900);
-}
-
-.login-header p {
-  color: var(--neutral-600);
-  margin: 0;
-}
-
-.login-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-4);
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-2);
-}
-
-.form-label {
-  font-weight: var(--font-weight-medium);
-  color: var(--neutral-700);
-}
-
-.form-input {
-  padding: var(--spacing-3);
-  border: 1px solid var(--neutral-300);
-  border-radius: var(--border-radius-md);
-  font-size: var(--font-size-base);
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: var(--primary-500);
-  box-shadow: 0 0 0 3px var(--primary-100);
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-2);
-  font-size: var(--font-size-sm);
-  color: var(--neutral-600);
-  cursor: pointer;
-}
-
-.checkbox-label input[type="checkbox"] {
-  margin: 0;
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-2);
-  padding: var(--spacing-2) var(--spacing-4);
-  border: 1px solid transparent;
-  border-radius: var(--border-radius-md);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  text-decoration: none;
-  cursor: pointer;
-  transition: var(--transition-fast);
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background-color: var(--primary-600);
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background-color: var(--primary-700);
-}
-
-.btn-lg {
-  padding: var(--spacing-3) var(--spacing-6);
-  font-size: var(--font-size-base);
-}
-
-.login-btn {
-  width: 100%;
-  margin-top: var(--spacing-2);
-}
-
-.divider {
-  position: relative;
-  text-align: center;
-  margin: var(--spacing-4) 0;
-}
-
-.divider::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background-color: var(--neutral-300);
-}
-
-.divider span {
-  background-color: white;
-  padding: 0 var(--spacing-4);
-  color: var(--neutral-500);
-  font-size: var(--font-size-sm);
-}
-
-.btn-google {
-  width: 100%;
-  background-color: white;
-  color: var(--neutral-700);
-  border: 2px solid var(--neutral-300);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-3);
-  transition: all var(--transition-fast);
-}
-
-.btn-google:hover:not(:disabled) {
-  background-color: var(--neutral-50);
-  border-color: var(--neutral-400);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-}
-
-.btn-google:active {
-  transform: translateY(0);
-}
-
-.google-icon {
-  flex-shrink: 0;
-}
-
-.error-message {
-  color: var(--error-600);
-  font-size: var(--font-size-sm);
-  text-align: center;
-  padding: var(--spacing-3);
-  background-color: var(--error-50);
-  border: 1px solid var(--error-200);
-  border-radius: var(--border-radius-base);
-}
-
-.success-message {
-  color: var(--success-600);
-  font-size: var(--font-size-sm);
-  text-align: center;
-  padding: var(--spacing-3);
-  background-color: var(--success-50);
-  border: 1px solid var(--success-200);
-  border-radius: var(--border-radius-base);
-}
-
-.demo-credentials {
-  margin-top: var(--spacing-6);
-  padding-top: var(--spacing-6);
-  border-top: 1px solid var(--neutral-200);
-}
-
-.demo-credentials h3 {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--neutral-700);
-  margin-bottom: var(--spacing-3);
-}
-
-.credential-item {
-  font-size: var(--font-size-xs);
-  color: var(--neutral-600);
-  margin-bottom: var(--spacing-1);
-}
-
-.login-footer {
-  text-align: center;
-  margin-top: var(--spacing-6);
-  padding-top: var(--spacing-6);
-  border-top: 1px solid var(--neutral-200);
-}
-
-.login-footer p {
-  font-size: var(--font-size-xs);
-  color: var(--neutral-500);
-  margin: 0;
+  background: var(--color-gray-50);
+  border-radius: 50px !important;
+  min-height: calc(100vh - 80px);
 }
 
 @media (max-width: 768px) {
@@ -584,29 +655,20 @@ body {
   }
   
   .main-content {
+    border-radius: 50px !important;
     min-height: calc(100vh - 140px);
   }
   
   .login-card {
-    padding: var(--spacing-6);
+    padding: var(--space-8);
   }
   
-  .logo-icon {
-    font-size: var(--font-size-3xl);
+  .demo-grid {
+    grid-template-columns: 1fr;
   }
   
-  .logo-text {
-    font-size: var(--font-size-2xl);
+  .shape {
+    display: none;
   }
-}
-
-/* Font Awesome animations */
-.fa-spin {
-  animation: fa-spin 2s infinite linear;
-}
-
-@keyframes fa-spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
 }
 </style>

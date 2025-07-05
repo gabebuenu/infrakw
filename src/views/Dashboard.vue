@@ -1,37 +1,41 @@
 <template>
   <div class="dashboard">
     <div class="dashboard-header">
-      <h1>Dashboard</h1>
-      <div class="quick-actions">
-        <button class="btn btn-primary" @click="$router.push('/equipamentos')">
-          <font-awesome-icon :icon="['fas', 'plus']" />
-          Novo Equipamento
-        </button>
-        <button class="btn btn-secondary" @click="$router.push('/manutencoes')">
-          <font-awesome-icon :icon="['fas', 'wrench']" />
-          Nova Manutenção
-        </button>
-        <button class="btn btn-success" @click="$router.push('/lojas')">
-          <font-awesome-icon :icon="['fas', 'store']" />
-          Gerenciar Lojas
-        </button>
+      <div class="header-content">
+        <div class="header-text">
+          <h1>Dashboard</h1>
+          <p>Visão geral do sistema de gestão de equipamentos</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-secondary" @click="refreshData">
+            <font-awesome-icon :icon="['fas', 'sync-alt']" :class="{ 'fa-spin': isRefreshing }" />
+            Atualizar
+          </button>
+          <button class="btn btn-primary" @click="$router.push('/equipamentos')">
+            <font-awesome-icon :icon="['fas', 'plus']" />
+            Novo Equipamento
+          </button>
+        </div>
       </div>
     </div>
     
     <div v-if="isLoading" class="loading-state">
-      <font-awesome-icon :icon="['fas', 'spinner']" class="fa-spin loading-icon" />
+      <div class="loading-spinner">
+        <font-awesome-icon :icon="['fas', 'cogs']" class="loading-icon" />
+      </div>
       <p>Carregando dados do dashboard...</p>
     </div>
     
     <div v-else class="dashboard-content">
+      <!-- Stats Cards -->
       <div class="stats-grid">
         <StatsCard
           :icon="['fas', 'desktop']"
           label="Total de Equipamentos"
           :value="stats.totalEquipments"
           variant="primary"
-          description="Ativos no sistema"
-          clickable
+          description="Equipamentos cadastrados no sistema"
+          :clickable="true"
           @click="$router.push('/equipamentos')"
         />
         
@@ -41,7 +45,7 @@
           :value="stats.inMaintenanceCount"
           variant="warning"
           description="Equipamentos em reparo"
-          clickable
+          :clickable="true"
           @click="$router.push('/manutencoes')"
         />
         
@@ -51,7 +55,8 @@
           :value="stats.warrantyExpiringSoon"
           variant="error"
           description="Próximos 30 dias"
-          clickable
+          :trend="-15"
+          :clickable="true"
         />
         
         <StatsCard
@@ -61,94 +66,133 @@
           variant="success"
           description="Manutenções realizadas"
           format="currency"
-          clickable
+          :trend="8"
+          :clickable="true"
           @click="$router.push('/relatorios')"
         />
       </div>
       
+      <!-- Secondary Stats -->
       <div class="secondary-stats">
         <StatsCard
           :icon="['fas', 'store']"
-          label="Lojas Cadastradas"
+          label="Lojas Ativas"
           :value="stats.totalStores"
           variant="secondary"
-          description="Unidades ativas"
-          clickable
+          description="Unidades em operação"
+          :clickable="true"
           @click="$router.push('/lojas')"
         />
         
         <StatsCard
           :icon="['fas', 'building']"
-          label="Empresas Terceiras"
+          label="Empresas Parceiras"
           :value="stats.totalCompanies"
           variant="secondary"
           description="Prestadores de serviço"
-          clickable
+          :clickable="true"
           @click="$router.push('/empresas')"
+        />
+        
+        <StatsCard
+          :icon="['fas', 'users']"
+          label="Usuários Ativos"
+          :value="stats.totalUsers"
+          variant="secondary"
+          description="Usuários do sistema"
+          :clickable="true"
+          @click="$router.push('/usuarios')"
         />
       </div>
       
-      <div class="dashboard-main">
-        <div class="content-left">
-          <div class="card">
-            <div class="card-header">
+      <!-- Main Content Grid -->
+      <div class="dashboard-grid">
+        <!-- Equipment by Store Chart -->
+        <div class="dashboard-card chart-card">
+          <div class="card-header">
+            <div class="header-info">
               <h3>Equipamentos por Loja</h3>
-              <button class="btn btn-sm btn-secondary" @click="refreshData">
-                <font-awesome-icon :icon="['fas', 'sync-alt']" />
-                Atualizar
+              <p>Distribuição de equipamentos nas unidades</p>
+            </div>
+            <div class="header-actions">
+              <select v-model="selectedPeriod" class="form-select">
+                <option value="30">Últimos 30 dias</option>
+                <option value="90">Últimos 3 meses</option>
+                <option value="365">Último ano</option>
+              </select>
+            </div>
+          </div>
+          <div class="card-body">
+            <div v-if="Object.keys(stats.equipmentsByStore).length === 0" class="empty-state">
+              <font-awesome-icon :icon="['fas', 'store']" class="empty-icon" />
+              <h4>Nenhuma loja com equipamentos</h4>
+              <p>Cadastre equipamentos para visualizar a distribuição</p>
+              <button class="btn btn-primary btn-sm" @click="$router.push('/equipamentos')">
+                Cadastrar Equipamento
               </button>
             </div>
-            <div class="card-body">
-              <div v-if="Object.keys(stats.equipmentsByStore).length === 0" class="empty-state">
-                <font-awesome-icon :icon="['fas', 'store']" class="empty-icon" />
-                <p>Nenhuma loja com equipamentos cadastrados</p>
-                <button class="btn btn-primary btn-sm" @click="$router.push('/lojas')">
-                  Cadastrar Primeira Loja
-                </button>
-              </div>
-              <div v-else class="store-stats">
-                <div 
-                  v-for="(count, store) in stats.equipmentsByStore" 
-                  :key="store"
-                  class="store-item"
-                >
-                  <div class="store-info">
-                    <font-awesome-icon :icon="['fas', 'store']" />
-                    <span>{{ store }}</span>
-                  </div>
-                  <div class="store-count">{{ count }}</div>
+            <div v-else class="store-chart">
+              <div 
+                v-for="(count, store) in stats.equipmentsByStore" 
+                :key="store"
+                class="store-bar"
+              >
+                <div class="store-info">
+                  <div class="store-name">{{ store }}</div>
+                  <div class="store-count">{{ count }} equipamentos</div>
+                </div>
+                <div class="bar-container">
+                  <div 
+                    class="bar-fill" 
+                    :style="{ width: `${(count / maxEquipmentCount) * 100}%` }"
+                  ></div>
                 </div>
               </div>
             </div>
           </div>
-          
-          <div class="card">
-            <div class="card-header">
+        </div>
+        
+        <!-- Recent Maintenances -->
+        <div class="dashboard-card">
+          <div class="card-header">
+            <div class="header-info">
               <h3>Manutenções Recentes</h3>
-              <router-link to="/manutencoes" class="btn btn-sm btn-secondary">
-                Ver Todas
-              </router-link>
+              <p>Últimas atividades de manutenção</p>
             </div>
-            <div class="card-body">
-              <div v-if="recentMaintenances.length === 0" class="empty-state">
-                <font-awesome-icon :icon="['fas', 'wrench']" class="empty-icon" />
-                <p>Nenhuma manutenção registrada</p>
-                <button class="btn btn-primary btn-sm" @click="$router.push('/manutencoes')">
-                  Registrar Primeira Manutenção
-                </button>
-              </div>
-              <div v-else class="maintenance-list">
-                <div 
-                  v-for="maintenance in recentMaintenances" 
-                  :key="maintenance.id"
-                  class="maintenance-item"
-                >
-                  <div class="maintenance-info">
-                    <div class="maintenance-equipment">{{ maintenance.equipmentName }}</div>
-                    <div class="maintenance-date">{{ formatDate(maintenance.startDate) }}</div>
+            <router-link to="/manutencoes" class="btn btn-ghost btn-sm">
+              Ver Todas
+              <font-awesome-icon :icon="['fas', 'arrow-right']" />
+            </router-link>
+          </div>
+          <div class="card-body">
+            <div v-if="recentMaintenances.length === 0" class="empty-state">
+              <font-awesome-icon :icon="['fas', 'wrench']" class="empty-icon" />
+              <h4>Nenhuma manutenção registrada</h4>
+              <p>Registre manutenções para acompanhar o histórico</p>
+              <button class="btn btn-primary btn-sm" @click="$router.push('/manutencoes')">
+                Registrar Manutenção
+              </button>
+            </div>
+            <div v-else class="maintenance-timeline">
+              <div 
+                v-for="maintenance in recentMaintenances" 
+                :key="maintenance.id"
+                class="timeline-item"
+              >
+                <div class="timeline-marker" :class="maintenance.status"></div>
+                <div class="timeline-content">
+                  <div class="maintenance-header">
+                    <h4>{{ maintenance.equipmentName }}</h4>
+                    <span class="maintenance-type" :class="maintenance.type">
+                      {{ maintenance.type }}
+                    </span>
                   </div>
-                  <div class="maintenance-status" :class="maintenance.status">
-                    {{ getStatusText(maintenance.status) }}
+                  <p class="maintenance-description">{{ maintenance.description }}</p>
+                  <div class="maintenance-meta">
+                    <span class="maintenance-date">{{ formatDate(maintenance.startDate) }}</span>
+                    <span class="maintenance-status" :class="maintenance.status">
+                      {{ getStatusText(maintenance.status) }}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -156,57 +200,96 @@
           </div>
         </div>
         
-        <div class="content-right">
-          <div class="card">
-            <div class="card-header">
-              <h3>Alertas e Notificações</h3>
+        <!-- Alerts and Notifications -->
+        <div class="dashboard-card alerts-card">
+          <div class="card-header">
+            <div class="header-info">
+              <h3>Alertas do Sistema</h3>
+              <p>Notificações importantes</p>
             </div>
-            <div class="card-body">
-              <div v-if="alerts.length === 0" class="empty-state">
-                <font-awesome-icon :icon="['fas', 'check-circle']" class="empty-icon text-success" />
-                <p>Nenhum alerta no momento</p>
-                <small>Tudo funcionando perfeitamente!</small>
-              </div>
-              <div v-else class="alerts-list">
-                <div 
-                  v-for="(alert, index) in alerts" 
-                  :key="index"
-                  class="alert" 
-                  :class="`alert-${alert.type}`"
-                >
+            <button class="btn btn-ghost btn-sm" @click="clearAllAlerts">
+              <font-awesome-icon :icon="['fas', 'check']" />
+              Limpar Todos
+            </button>
+          </div>
+          <div class="card-body">
+            <div v-if="alerts.length === 0" class="empty-state">
+              <font-awesome-icon :icon="['fas', 'check-circle']" class="empty-icon success" />
+              <h4>Tudo funcionando perfeitamente!</h4>
+              <p>Nenhum alerta no momento</p>
+            </div>
+            <div v-else class="alerts-list">
+              <div 
+                v-for="(alert, index) in alerts" 
+                :key="index"
+                class="alert-item" 
+                :class="alert.type"
+              >
+                <div class="alert-icon">
                   <font-awesome-icon :icon="alert.icon" />
-                  <div>{{ alert.message }}</div>
                 </div>
+                <div class="alert-content">
+                  <h4>{{ alert.title }}</h4>
+                  <p>{{ alert.message }}</p>
+                  <span class="alert-time">{{ formatTime(alert.time) }}</span>
+                </div>
+                <button class="alert-dismiss" @click="dismissAlert(index)">
+                  <font-awesome-icon :icon="['fas', 'times']" />
+                </button>
               </div>
             </div>
           </div>
-          
-          <div class="card">
-            <div class="card-header">
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="dashboard-card actions-card">
+          <div class="card-header">
+            <div class="header-info">
               <h3>Ações Rápidas</h3>
+              <p>Acesso rápido às principais funcionalidades</p>
             </div>
-            <div class="card-body">
-              <div class="quick-actions-grid">
-                <button class="action-btn" @click="$router.push('/equipamentos')">
+          </div>
+          <div class="card-body">
+            <div class="actions-grid">
+              <button class="action-item" @click="$router.push('/equipamentos')">
+                <div class="action-icon primary">
                   <font-awesome-icon :icon="['fas', 'search']" />
-                  <span>Buscar Equipamento</span>
-                </button>
-                
-                <button class="action-btn" @click="$router.push('/relatorios')" v-if="canViewReports">
+                </div>
+                <div class="action-content">
+                  <h4>Buscar Equipamento</h4>
+                  <p>Localizar equipamentos no sistema</p>
+                </div>
+              </button>
+              
+              <button class="action-item" @click="$router.push('/relatorios')" v-if="canViewReports">
+                <div class="action-icon success">
                   <font-awesome-icon :icon="['fas', 'file-pdf']" />
-                  <span>Gerar Relatório</span>
-                </button>
-                
-                <button class="action-btn" @click="$router.push('/lojas')">
+                </div>
+                <div class="action-content">
+                  <h4>Gerar Relatório</h4>
+                  <p>Criar relatórios personalizados</p>
+                </div>
+              </button>
+              
+              <button class="action-item" @click="$router.push('/lojas')">
+                <div class="action-icon warning">
                   <font-awesome-icon :icon="['fas', 'store']" />
-                  <span>Gerenciar Lojas</span>
-                </button>
-                
-                <button class="action-btn" @click="$router.push('/empresas')">
+                </div>
+                <div class="action-content">
+                  <h4>Gerenciar Lojas</h4>
+                  <p>Administrar unidades</p>
+                </div>
+              </button>
+              
+              <button class="action-item" @click="$router.push('/empresas')">
+                <div class="action-icon secondary">
                   <font-awesome-icon :icon="['fas', 'building']" />
-                  <span>Empresas Terceiras</span>
-                </button>
-              </div>
+                </div>
+                <div class="action-content">
+                  <h4>Empresas Terceiras</h4>
+                  <p>Gerenciar prestadores</p>
+                </div>
+              </button>
             </div>
           </div>
         </div>
@@ -216,16 +299,51 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useAuth } from '../composables/useAuth'
 import { useDashboard } from '../composables/useDashboard'
 import StatsCard from '../components/StatsCard.vue'
+import { 
+  collection, 
+  getDocs, 
+  query, 
+  orderBy, 
+  limit,
+  where,
+  onSnapshot
+} from 'firebase/firestore'
+import { db } from '../firebase/config'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
 const { canViewReports } = useAuth()
 const { stats, recentMaintenances, alerts, isLoading, loadDashboardData } = useDashboard()
 
+const isRefreshing = ref(false)
+const selectedPeriod = ref('30')
+
+const maxEquipmentCount = computed(() => {
+  const counts = Object.values(stats.value.equipmentsByStore)
+  return Math.max(...counts, 1)
+})
+
 const formatDate = (date: string) => {
-  return new Date(date).toLocaleDateString('pt-BR')
+  return new Date(date).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  })
+}
+
+const formatTime = (time: Date) => {
+  const now = new Date()
+  const diff = now.getTime() - time.getTime()
+  const minutes = Math.floor(diff / (1000 * 60))
+  const hours = Math.floor(diff / (1000 * 60 * 60))
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  
+  if (minutes < 60) return `${minutes}min atrás`
+  if (hours < 24) return `${hours}h atrás`
+  return `${days}d atrás`
 }
 
 const getStatusText = (status: string) => {
@@ -238,34 +356,120 @@ const getStatusText = (status: string) => {
 }
 
 const refreshData = async () => {
-  await loadDashboardData()
+  isRefreshing.value = true
+  try {
+    await loadDashboardData()
+    // Simulate loading time for better UX
+    await new Promise(resolve => setTimeout(resolve, 1000))
+  } finally {
+    isRefreshing.value = false
+  }
+}
+
+const clearAllAlerts = () => {
+  alerts.value = []
+}
+
+const dismissAlert = (index: number) => {
+  alerts.value.splice(index, 1)
+}
+
+// Firebase integration for real-time updates
+const setupRealtimeListeners = () => {
+  // Listen to equipment changes
+  const equipmentQuery = query(collection(db, 'equipamentos'))
+  onSnapshot(equipmentQuery, (snapshot) => {
+    stats.value.totalEquipments = snapshot.size
+    
+    // Update equipment by store
+    const equipmentsByStore: Record<string, number> = {}
+    snapshot.docs.forEach(doc => {
+      const data = doc.data()
+      const store = data.store || 'Sem loja'
+      equipmentsByStore[store] = (equipmentsByStore[store] || 0) + 1
+    })
+    stats.value.equipmentsByStore = equipmentsByStore
+  })
+  
+  // Listen to maintenance changes
+  const maintenanceQuery = query(
+    collection(db, 'manutencoes'),
+    orderBy('createdAt', 'desc'),
+    limit(5)
+  )
+  onSnapshot(maintenanceQuery, (snapshot) => {
+    recentMaintenances.value = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      equipmentName: doc.data().equipmentName || 'Equipamento não identificado',
+      description: doc.data().description || 'Manutenção realizada'
+    }))
+    
+    // Count in maintenance
+    const inMaintenanceQuery = query(
+      collection(db, 'manutencoes'),
+      where('status', '==', 'em-andamento')
+    )
+    getDocs(inMaintenanceQuery).then(snapshot => {
+      stats.value.inMaintenanceCount = snapshot.size
+    })
+  })
+  
+  // Listen to users changes
+  const usersQuery = query(collection(db, 'usuarios'))
+  onSnapshot(usersQuery, (snapshot) => {
+    stats.value.totalUsers = snapshot.size
+  })
 }
 
 onMounted(() => {
   loadDashboardData()
+  setupRealtimeListeners()
 })
 </script>
 
 <style scoped>
 .dashboard {
-  padding: var(--spacing-6);
+  padding: var(--space-8);
+  background: var(--color-gray-50);
+  min-height: 100vh;
 }
 
 .dashboard-header {
+  margin-bottom: var(--space-10);
+}
+
+.header-content {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--spacing-8);
+  align-items: flex-end;
+  padding: var(--space-8);
+  background: var(--color-white);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-gray-100);
 }
 
-.dashboard-header h1 {
+.header-text h1 {
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-black);
+  margin: 0 0 var(--space-2) 0;
+  background: linear-gradient(135deg, var(--color-black), var(--color-gray-700));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.header-text p {
+  color: var(--color-gray-600);
+  font-size: var(--font-size-lg);
   margin: 0;
-  color: var(--neutral-900);
 }
 
-.quick-actions {
+.header-actions {
   display: flex;
-  gap: var(--spacing-3);
+  gap: var(--space-4);
 }
 
 .loading-state {
@@ -273,246 +477,318 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--spacing-12);
-  color: var(--neutral-500);
+  padding: var(--space-20);
+  color: var(--color-gray-500);
+}
+
+.loading-spinner {
+  margin-bottom: var(--space-6);
 }
 
 .loading-icon {
-  font-size: var(--font-size-4xl);
-  margin-bottom: var(--spacing-4);
-  color: var(--primary-600);
+  font-size: var(--font-size-5xl);
+  color: var(--color-black);
+  animation: spin 2s linear infinite;
 }
 
 .dashboard-content {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-6);
+  gap: var(--space-8);
 }
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: var(--spacing-6);
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--space-6);
 }
 
 .secondary-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: var(--spacing-6);
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--space-6);
 }
 
-.dashboard-main {
+.dashboard-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: var(--spacing-6);
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: var(--space-6);
 }
 
-.content-left {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-6);
+.dashboard-card {
+  background: var(--color-white);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-gray-100);
+  overflow: hidden;
+  transition: all var(--transition-fast);
 }
 
-.content-right {
+.dashboard-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.card-header {
+  padding: var(--space-8);
+  border-bottom: 1px solid var(--color-gray-100);
   display: flex;
-  flex-direction: column;
-  gap: var(--spacing-6);
+  justify-content: space-between;
+  align-items: flex-start;
+  background: linear-gradient(135deg, var(--color-gray-50), var(--color-white));
+}
+
+.header-info h3 {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-black);
+  margin: 0 0 var(--space-1) 0;
+}
+
+.header-info p {
+  color: var(--color-gray-600);
+  font-size: var(--font-size-sm);
+  margin: 0;
+}
+
+.card-body {
+  padding: var(--space-8);
 }
 
 .empty-state {
   text-align: center;
-  padding: var(--spacing-8);
-  color: var(--neutral-500);
+  padding: var(--space-12);
+  color: var(--color-gray-500);
 }
 
 .empty-icon {
-  font-size: var(--font-size-3xl);
-  margin-bottom: var(--spacing-4);
+  font-size: var(--font-size-5xl);
+  margin-bottom: var(--space-6);
+  color: var(--color-gray-300);
 }
 
-.store-stats {
+.empty-icon.success {
+  color: var(--color-success);
+}
+
+.empty-state h4 {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-gray-700);
+  margin: 0 0 var(--space-2) 0;
+}
+
+.empty-state p {
+  margin: 0 0 var(--space-6) 0;
+}
+
+.store-chart {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-3);
+  gap: var(--space-6);
 }
 
-.store-item {
+.store-bar {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-3);
-  border: 1px solid var(--neutral-200);
-  border-radius: var(--border-radius-base);
-  transition: background-color var(--transition-fast);
-}
-
-.store-item:hover {
-  background-color: var(--neutral-50);
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 .store-info {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: var(--spacing-2);
-  color: var(--neutral-700);
+}
+
+.store-name {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-gray-900);
 }
 
 .store-count {
-  font-weight: var(--font-weight-semibold);
-  color: var(--primary-600);
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-600);
 }
 
-.maintenance-list {
+.bar-container {
+  height: 8px;
+  background: var(--color-gray-200);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-black), var(--color-gray-700));
+  border-radius: var(--radius-full);
+  transition: width var(--transition-slow);
+}
+
+.maintenance-timeline {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-3);
+  gap: var(--space-6);
 }
 
-.maintenance-item {
+.timeline-item {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-3);
-  border: 1px solid var(--neutral-200);
-  border-radius: var(--border-radius-base);
+  gap: var(--space-4);
+  position: relative;
 }
 
-.maintenance-info {
+.timeline-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: 32px;
+  bottom: -24px;
+  width: 2px;
+  background: var(--color-gray-200);
+}
+
+.timeline-marker {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+  margin-top: var(--space-1);
+}
+
+.timeline-marker.pendente {
+  background: var(--color-gray-300);
+}
+
+.timeline-marker.em-andamento {
+  background: var(--color-warning);
+}
+
+.timeline-marker.concluida {
+  background: var(--color-success);
+}
+
+.timeline-content {
   flex: 1;
 }
 
-.maintenance-equipment {
+.maintenance-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+.maintenance-header h4 {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-gray-900);
+  margin: 0;
+}
+
+.maintenance-type {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
-  color: var(--neutral-900);
+  text-transform: uppercase;
+}
+
+.maintenance-type.preventiva {
+  background: var(--color-info-light);
+  color: var(--color-info);
+}
+
+.maintenance-type.corretiva {
+  background: var(--color-warning-light);
+  color: var(--color-warning);
+}
+
+.maintenance-description {
+  color: var(--color-gray-600);
+  font-size: var(--font-size-sm);
+  margin: 0 0 var(--space-3) 0;
+  line-height: var(--line-height-relaxed);
+}
+
+.maintenance-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .maintenance-date {
-  font-size: var(--font-size-sm);
-  color: var(--neutral-500);
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
 }
 
 .maintenance-status {
-  padding: var(--spacing-1) var(--spacing-2);
-  border-radius: var(--border-radius-sm);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
 }
 
 .maintenance-status.pendente {
-  background-color: var(--warning-100);
-  color: var(--warning-700);
+  background: var(--color-gray-100);
+  color: var(--color-gray-700);
 }
 
 .maintenance-status.em-andamento {
-  background-color: var(--primary-100);
-  color: var(--primary-700);
+  background: var(--color-warning-light);
+  color: var(--color-warning);
 }
 
 .maintenance-status.concluida {
-  background-color: var(--success-100);
-  color: var(--success-700);
+  background: var(--color-success-light);
+  color: var(--color-success);
 }
 
 .alerts-list {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-3);
+  gap: var(--space-4);
 }
 
-.alert {
+.alert-item {
   display: flex;
-  align-items: center;
-  gap: var(--spacing-3);
-  padding: var(--spacing-4);
-  border-radius: var(--border-radius-base);
-  border-left: 4px solid;
-}
-
-.alert-warning {
-  background-color: var(--warning-50);
-  border-left-color: var(--warning-500);
-  color: var(--warning-700);
-}
-
-.alert-error {
-  background-color: var(--error-50);
-  border-left-color: var(--error-500);
-  color: var(--error-700);
-}
-
-.alert-info {
-  background-color: var(--primary-50);
-  border-left-color: var(--primary-500);
-  color: var(--primary-700);
-}
-
-.quick-actions-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--spacing-3);
-}
-
-.action-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spacing-2);
-  padding: var(--spacing-4);
-  background-color: var(--neutral-50);
-  border: 1px solid var(--neutral-200);
-  border-radius: var(--border-radius-base);
-  cursor: pointer;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border-radius: var(--radius-xl);
+  border: 1px solid;
+  position: relative;
   transition: all var(--transition-fast);
-  text-decoration: none;
-  color: var(--neutral-700);
 }
 
-.action-btn:hover {
-  background-color: var(--primary-50);
-  border-color: var(--primary-200);
-  color: var(--primary-700);
+.alert-item:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
-.action-btn svg {
-  font-size: var(--font-size-xl);
+.alert-item.warning {
+  background: var(--color-warning-light);
+  border-color: var(--color-warning);
 }
 
-@media (max-width: 1024px) {
-  .dashboard-main {
-    grid-template-columns: 1fr;
-  }
-  
-  .secondary-stats {
-    grid-template-columns: repeat(2, 1fr);
-  }
+.alert-item.error {
+  background: var(--color-error-light);
+  border-color: var(--color-error);
 }
 
-@media (max-width: 768px) {
-  .dashboard {
-    padding: var(--spacing-4);
-  }
-  
-  .dashboard-header {
-    flex-direction: column;
-    gap: var(--spacing-4);
-    align-items: stretch;
-  }
-  
-  .quick-actions {
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-  
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .secondary-stats {
-    grid-template-columns: 1fr;
-  }
-  
-  .quick-actions-grid {
-    grid-template-columns: 1fr;
-  }
+.alert-item.info {
+  background: var(--color-info-light);
+  border-color: var(--color-info);
+}
+
+.alert-icon {
+  width: 40px;
+  height: 40px;
+}
+
+.alert-content {
+  flex: 1;
+}
+
+.alert-time {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
 }
 </style>
